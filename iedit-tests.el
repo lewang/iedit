@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2010, 2011, 2012 Victor Ren
 
-;; Time-stamp: <2012-08-09 17:17:03 Victor Ren>
+;; Time-stamp: <2012-10-15 16:12:02 Victor Ren>
 ;; Author: Victor Ren <victorhge@gmail.com>
 ;; Version: 0.97
 ;; X-URL: http://www.emacswiki.org/emacs/Iedit
@@ -29,12 +29,22 @@
 
 ;;; Code:
 (require 'ert)
+(require 'test-util)
 (require 'iedit)
+(require 'iedit-rect)
 
 (ert-deftest iedit-compile-test ()
   (let ((byte-compile-error-on-warn t ))
     (should (byte-compile-file "iedit.el"))
     (delete-file "iedit.elc" nil)))
+
+(defmacro with-iedit-test-buffer (buffer-name &rest body)
+  (declare (indent 1) (debug t))
+  `(progn
+     (when (get-buffer ,buffer-name)
+       (kill-buffer ,buffer-name))
+     (with-current-buffer (get-buffer-create ,buffer-name)
+       ,@body)))
 
 (defun with-iedit-test-fixture (input-buffer-string body)
   "iedit test fixture"
@@ -42,14 +52,14 @@
         (old-iedit-transient-sensitive iedit-transient-mark-sensitive))
     (unwind-protect
         (progn
-          (with-temp-buffer
+          (with-iedit-test-buffer "* iedit transient mark *"
             (transient-mark-mode t)
             (setq iedit-transient-mark-sensitive t)
             (insert input-buffer-string)
             (goto-char 1)
             (iedit-mode)
             (funcall body))
-          (with-temp-buffer
+          (with-iedit-test-buffer "* iedit NO transient mark *"
             (setq iedit-transient-mark-sensitive nil)
             (transient-mark-mode -1)
             (insert input-buffer-string)
@@ -162,7 +172,7 @@ fob")))))
      (isearch-process-search-char ?f)
      (isearch-process-search-char ?o)
      (isearch-process-search-char ?o)
-     (iedit-mode)
+     (iedit-mode-from-isearch)
      (should (string= iedit-initial-string-local "foo"))
      (should (= 4 (length iedit-occurrences-overlays)))
      (iedit-mode)
@@ -361,9 +371,8 @@ fob")))))
      (iedit-mode) ; turn off iedit
      (goto-char 2)
      (set-mark-command nil)
-     (forward-char 1)
-     (forward-line 1)
-     (iedit-rectangle-mode)
+     (goto-char 7)
+     (call-interactively 'iedit-rectangle-mode)
      (iedit-blank-occurrences)
      (should (string= (buffer-string) "f o
   oo barfoo foo")))))
@@ -424,8 +433,8 @@ fob")))))
    (set-mark-command nil)
    (forward-char 3)
    (forward-line 3)
-   (iedit-rectangle-mode)
-   (should (equal iedit-rectangle '(1 19))))))
+   (call-interactively 'iedit-rectangle-mode)
+   (should (equal (marker-position-list iedit-rectangle) '(1 19))))))
 
 (ert-deftest iedit-kill-rectangle-error-test ()
   (with-iedit-test-fixture
@@ -437,9 +446,9 @@ fob")))))
    (iedit-mode)
    (set-mark-command nil)
    (goto-char 22)
-   (iedit-rectangle-mode)
+   (call-interactively 'iedit-rectangle-mode)
    (should (iedit-same-column))
-   (should (equal iedit-rectangle '(1 22)))
+   (should (equal (marker-position-list iedit-rectangle) '(1 22)))
    (iedit-prev-occurrence)
    (delete-char -1)
    (should (not (iedit-same-column)))
@@ -455,9 +464,9 @@ fob")))))
    (iedit-mode)
    (set-mark-command nil)
    (goto-char 22)
-   (iedit-rectangle-mode)
+   (call-interactively 'iedit-rectangle-mode)
    (should (iedit-same-column))
-   (should (equal iedit-rectangle '(1 22)))
+   (should (equal (marker-position-list iedit-rectangle) '(1 22)))
    (iedit-kill-rectangle)
    (should (string= (buffer-string)
 "
@@ -465,6 +474,23 @@ o
 arfoo
  foo"))
  (should (equal killed-rectangle '("foo" " fo" "  b" "   "))))))
+
+(ert-deftest iedit-kill-rectangle-fill-extra-spaces ()
+  "lines within rectangle shorter than rectangle right column
+  should have spaces filled in."
+  (with-iedit-test-fixture
+   "foo
+ foo
+  barfoo
+    foo"
+   (lambda ()
+     (iedit-mode)
+     (setq indent-tabs-mode nil)
+     (set-mark-command nil)
+     (goto-word "barfoo")
+     (call-interactively 'iedit-rectangle-mode)
+     (should (iedit-same-column))
+     (should (equal '(1 27) (marker-position-list iedit-rectangle))))))
 
 (ert-deftest iedit-restrict-defun-test ()
   (with-iedit-test-fixture
@@ -482,7 +508,7 @@ arfoo
       (should (= 1 (length iedit-occurrences-overlays)))
       (iedit-mode)
       (goto-char 13)
-      (iedit-mode-on-function)
+      (iedit-mode-toggle-on-function)
       (should (= 4 (length iedit-occurrences-overlays)))
       (iedit-mode)
       (iedit-mode)
