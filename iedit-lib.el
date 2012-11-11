@@ -326,65 +326,65 @@ occurrence, it will abort Iedit mode."
       (when (not iedit-post-undo-hook-installed)
         (add-hook 'post-command-hook 'iedit-post-undo-hook nil t)
         (setq iedit-post-undo-hook-installed t))
-    (when (and (not iedit-aborting ))
-    ;; before modification
-    (if (null after)
-        (if (or (< beg (overlay-start occurrence))
-                (> end (overlay-end occurrence)))
-            (progn (setq iedit-aborting t) ; abort iedit-mode
-                   (add-hook 'post-command-hook 'iedit-reset-aborting nil t))
-          (setq iedit-before-modification-string
-                (buffer-substring-no-properties beg end))
-          ;; Check if this is called twice before modification. When inserting
-          ;; into zero-width occurrence or between two conjoined occurrences,
-          ;; both insert-in-front-hooks and insert-behind-hooks will be
-          ;; called.  Two calls will make `iedit-skip-modification-once' true.
-          (setq iedit-skip-modification-once (not iedit-skip-modification-once)))
-      ;; after modification
-      (when (not iedit-buffering)
-        (if iedit-skip-modification-once
-            ;; Skip the first hook
-            (setq iedit-skip-modification-once nil)
-          (setq iedit-skip-modification-once t)
-          (when (or (eq 0 change) ;; insertion
-                    (eq beg end)  ;; deletion
-                    (not (string= iedit-before-modification-string
-                                  (buffer-substring-no-properties beg end))))
-            (let ((inhibit-modification-hooks t) ; todo: extract this as a function
-                  (offset (- beg (overlay-start occurrence)))
-                  (value (buffer-substring-no-properties beg end)))
-              (save-excursion
-                ;; insertion or yank
-                (if (eq 0 change)
-                    (dolist (another-occurrence iedit-occurrences-overlays)
-                      (let* ((beginning (+ (overlay-start another-occurrence) offset))
-                             (ending (+ beginning (- end beg))))
-                        (when (not (eq another-occurrence occurrence))
+    (when (not iedit-aborting)
+      ;; before modification
+      (if (null after)
+          (if (or (< beg (overlay-start occurrence))
+                  (> end (overlay-end occurrence)))
+              (progn (setq iedit-aborting t) ; abort iedit-mode
+                     (add-hook 'post-command-hook 'iedit-reset-aborting nil t))
+            (setq iedit-before-modification-string
+                  (buffer-substring-no-properties beg end))
+            ;; Check if this is called twice before modification. When inserting
+            ;; into zero-width occurrence or between two conjoined occurrences,
+            ;; both insert-in-front-hooks and insert-behind-hooks will be
+            ;; called.  Two calls will make `iedit-skip-modification-once' true.
+            (setq iedit-skip-modification-once (not iedit-skip-modification-once)))
+        ;; after modification
+        (when (not iedit-buffering)
+          (if iedit-skip-modification-once
+              ;; Skip the first hook
+              (setq iedit-skip-modification-once nil)
+            (setq iedit-skip-modification-once t)
+            (when (or (eq 0 change) ;; insertion
+                      (eq beg end)  ;; deletion
+                      (not (string= iedit-before-modification-string
+                                    (buffer-substring-no-properties beg end))))
+              (let ((inhibit-modification-hooks t) ; todo: extract this as a function
+                    (offset (- beg (overlay-start occurrence)))
+                    (value (buffer-substring-no-properties beg end)))
+                (save-excursion
+                  ;; insertion or yank
+                  (if (eq 0 change)
+                      (dolist (another-occurrence iedit-occurrences-overlays)
+                        (let* ((beginning (+ (overlay-start another-occurrence) offset))
+                               (ending (+ beginning (- end beg))))
+                          (when (not (eq another-occurrence occurrence))
+                            (goto-char beginning)
+                            (insert-and-inherit value)
+                            ;; todo: reconsider this change Quick fix for
+                            ;; multi-occur occur-edit-mode: multi-occur depend on
+                            ;; after-change-functions to update original
+                            ;; buffer. Since inhibit-modification-hooks is set to
+                            ;; non-nil, after-change-functions hooks are not going
+                            ;; to be called for the changes of other occurrences.
+                            ;; So run the hook here.
+                            (run-hook-with-args 'after-change-functions
+                                                beginning
+                                                ending
+                                                change))
+                          (iedit-move-conjoined-overlays another-occurrence)))
+                    ;; deletion
+                    (dolist (another-occurrence (remove occurrence iedit-occurrences-overlays))
+                      (let ((beginning (+ (overlay-start another-occurrence) offset)))
+                        (delete-region beginning (+ beginning change))
+                        (unless (eq beg end) ;; replacement
                           (goto-char beginning)
-                          (insert-and-inherit value)
-                          ;; todo: reconsider this change Quick fix for
-                          ;; multi-occur occur-edit-mode: multi-occur depend on
-                          ;; after-change-functions to update original
-                          ;; buffer. Since inhibit-modification-hooks is set to
-                          ;; non-nil, after-change-functions hooks are not going
-                          ;; to be called for the changes of other occurrences.
-                          ;; So run the hook here.
-                          (run-hook-with-args 'after-change-functions
-                                              beginning
-                                              ending
-                                              change))
-                        (iedit-move-conjoined-overlays another-occurrence)))
-                  ;; deletion
-                  (dolist (another-occurrence (remove occurrence iedit-occurrences-overlays))
-                    (let ((beginning (+ (overlay-start another-occurrence) offset)))
-                      (delete-region beginning (+ beginning change))
-                      (unless (eq beg end) ;; replacement
-                        (goto-char beginning)
-                        (insert-and-inherit value))
-                      (run-hook-with-args 'after-change-functions
-                                          beginning
-                                          (+ beginning (- beg end))
-                                          change)))))))))))))
+                          (insert-and-inherit value))
+                        (run-hook-with-args 'after-change-functions
+                                            beginning
+                                            (+ beginning (- beg end))
+                                            change)))))))))))))
 
 (defun iedit-next-occurrence ()
   "Move forward to the next occurrence in the `iedit'.
