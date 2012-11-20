@@ -368,6 +368,11 @@ Keymap used within overlays:
 
 (defun iedit-start (occurrence-regexp beg end)
   "Start Iedit mode for the `occurrence-regexp' in the current buffer."
+
+  ;; attempt to fix random unsetting of `iedit-skip-modification-once'
+  (setq iedit-skip-modification-once t)
+
+
   (setq iedit-unmatched-lines-invisible iedit-unmatched-lines-invisible-default)
   (setq iedit-initial-region (list beg end))
   (iedit-start2 occurrence-regexp beg end)
@@ -385,14 +390,8 @@ Keymap used within overlays:
 (defun iedit-start2 (occurrence-regexp beg end)
   "Refresh Iedit mode."
   (setq iedit-occurrence-keymap iedit-mode-occurrence-keymap)
-  (setq iedit-mode
-        (propertize
-         (concat " Iedit:"
-                 (number-to-string
-                  (iedit-make-occurrences-overlays occurrence-regexp beg end)))
-         'face
-         'font-lock-warning-face))
-  (force-mode-line-update))
+  (iedit-make-occurrences-overlays occurrence-regexp beg end)
+  (iedit-update-mode-line))
 
 (defun iedit-done ()
   "Exit Iedit mode.

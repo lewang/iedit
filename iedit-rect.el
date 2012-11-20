@@ -93,6 +93,7 @@ Commands:
   (interactive (when (iedit-region-active)
                  (list (region-beginning)
                        (region-end))))
+  (setq iedit-skip-modification-once t)
   (if iedit-rectangle-mode
       (iedit-rectangle-done)
     (iedit-barf-if-lib-active)
