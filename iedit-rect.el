@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2010, 2011, 2012 Victor Ren
 
-;; Time-stamp: <2012-09-05 09:49:55 Victor Ren>
+;; Time-stamp: <2013-01-18 17:24:41 Victor Ren>
 ;; Author: Victor Ren <victorhge@gmail.com>
 ;; Keywords: occurrence region simultaneous rectangle refactoring
 ;; Version: 0.97
@@ -127,8 +127,7 @@ Commands:
                           (point)))
                        iedit-occurrences-overlays)
                  (forward-line 1))
-            until (> (point) end))
-      (setq iedit-occurrences-overlays (nreverse iedit-occurrences-overlays))))
+            until (> (point) end))))
   (setq iedit-rectangle (list beg end))
   (setq iedit-rectangle-mode (propertize
                     (concat " Iedit-rect:" (number-to-string (length iedit-occurrences-overlays)))
@@ -158,7 +157,8 @@ The behavior is the same as `kill-rectangle' in rect mode."
   (or (and iedit-rectangle (iedit-same-column))
       (error "Not a rectangle"))
   (let ((inhibit-modification-hooks t)
-        (beg (overlay-start (car iedit-occurrences-overlays)))
+        (beg (overlay-start (progn (iedit-first-occurrence)
+                                   (iedit-find-current-occurrence-overlay))))
         (end (overlay-end (progn (iedit-last-occurrence)
                                  (iedit-find-current-occurrence-overlay)))))
     (kill-rectangle beg end fill)))
