@@ -171,8 +171,6 @@ is not applied to other occurrences when it is true.")
     (define-key map (kbd "M-SPC") 'iedit-blank-occurrences)
     (define-key map (kbd "M-D") 'iedit-delete-occurrences)
     (define-key map (kbd "M-N") 'iedit-number-occurrences)
-    (define-key map (kbd "C-:") 'iedit-remove-occurrece)
-    (define-key map (kbd "M-;") 'iedit-apply-global-modification)
     (define-key map (kbd "M-B") 'iedit-toggle-buffering)
     (define-key map (kbd "M-<") 'iedit-goto-first-occurrence)
     (define-key map (kbd "M->") 'iedit-goto-last-occurrence)
@@ -467,22 +465,6 @@ the buffer."
     (when iedit-forward-success
       (goto-char pos))))
 
-(defun iedit-remove-occurrece (&optional arg)
-  "remove current occurrence"
-  (interactive "P")
-  (let ((pos (point))
-        (overlay (iedit-find-current-occurrence-overlay)))
-    (if overlay
-        (progn
-          (iedit-cleanup-occurrences-overlays (overlay-start overlay) (overlay-end overlay) 'inclusive)
-          (if iedit-occurrences-overlays
-              (progn (iedit-next-occurrence)
-                     (iedit-update-mode-line))
-            (iedit-mode)
-            (message "No more occurrences, exited Iedit.")))
-      (message "not in occurrence."))))
-
-
 (defun iedit-goto-first-occurrence ()
   "Move to the first occurrence."
   (interactive)
@@ -747,17 +729,6 @@ FORMAT."
         (goto-char (next-single-char-property-change (point) 'iedit-occurrence-overlay-name))))))
 
 
-(defun iedit-update-mode-line ()
-  (setq iedit-mode
-        (propertize
-         (concat " Iedit:"
-                 (number-to-string (length iedit-occurrences-overlays)))
-         'face
-         'font-lock-warning-face))
-  (force-mode-line-update))
-
-
-
 ;;; help functions
 (defun iedit-find-current-occurrence-overlay ()
   "Return the current occurrence overlay  at point or point - 1.
@@ -810,12 +781,14 @@ This function is supposed to be called in overlay keymap."
 (defun iedit-current-occurrence-string ()
   "Return current occurrence string.
 Return nil if occurrence string is empty string."
-  (let* ((ov (or (iedit-find-current-occurrence-overlay)
-                 (car-safe iedit-occurrences-overlays)))
-         (beg (and ov (overlay-start ov)))
-         (end (and ov (overlay-end ov))))
-    (if (and ov (/=  beg end))
-        (buffer-substring-no-properties beg end)
+  (let ((ov (or (iedit-find-current-occurrence-overlay)
+                 (car iedit-occurrences-overlays))))
+    (if ov
+        (let ((beg (overlay-start ov))
+              (end (overlay-end ov)))
+          (if (/=  beg end)
+              (buffer-substring-no-properties beg end)
+            nil))
       nil)))
 
 (defun iedit-occurrence-string-length ()

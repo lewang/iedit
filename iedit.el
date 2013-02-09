@@ -397,8 +397,14 @@ Keymap used within overlays:
 (defun iedit-start2 (occurrence-regexp beg end)
   "Refresh Iedit mode."
   (setq iedit-occurrence-keymap iedit-mode-occurrence-keymap)
-  (iedit-make-occurrences-overlays occurrence-regexp beg end)
-  (iedit-update-mode-line))
+  (setq iedit-mode
+        (propertize
+         (concat " Iedit:"
+                 (number-to-string
+                  (iedit-make-occurrences-overlays occurrence-regexp beg end)))
+         'face
+         'font-lock-warning-face))
+  (force-mode-line-update))
 
 (defun iedit-done ()
   "Exit Iedit mode.
