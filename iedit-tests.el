@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2010, 2011, 2012 Victor Ren
 
-;; Time-stamp: <2013-01-19 22:18:17 Victor Ren>
+;; Time-stamp: <2013-02-09 00:54:03 Victor Ren>
 ;; Author: Victor Ren <victorhge@gmail.com>
 ;; Version: 0.97
 ;; X-URL: http://www.emacswiki.org/emacs/Iedit
@@ -244,9 +244,9 @@ fob")))))
    barfoo
    foo "
    (lambda ()
-     (iedit-last-occurrence)
+     (iedit-goto-last-occurrence)
      (should (= (point) 24))
-     (iedit-first-occurrence)
+     (iedit-goto-first-occurrence)
      (should (= (point) 1))
      (iedit-next-occurrence)
      (should (= (point) 7))
@@ -473,7 +473,13 @@ fob")))))
      (forward-char 3)
      (forward-line 3)
      (call-interactively 'iedit-rectangle-mode)
-     (should (equal (marker-position-list iedit-rectangle) '(1 19))))))
+     (should (equal (marker-position-list iedit-rectangle) '(1 19)))
+     (call-interactively 'iedit-rectangle-mode)
+     (goto-char (point-min))
+     (set-mark-command nil)
+     (goto-char (point-max))
+     (call-interactively 'iedit-rectangle-mode)
+     (should (equal (marker-position-list iedit-rectangle) '(1 33))))))
 
 (ert-deftest iedit-kill-rectangle-error-test ()
   (with-iedit-test-fixture
